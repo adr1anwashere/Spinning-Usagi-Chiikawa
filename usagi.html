@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3D Spinning Usagi & Spider-Usagi ★ (Oo-sah-gee)</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+    body {
+      background: radial-gradient(circle at center, #1e1e2f 0%, #0d0d16 100%);
+      color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      width: 100vw;
+    }
+    #canvas-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    canvas {
+      display: block;
+      cursor: grab;
+      touch-action: none;
+    }
+    canvas:active { cursor: grabbing; }
+
+    /* UI Header */
+    .header-bar {
+      position: absolute;
+      top: 18px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      pointer-events: none;
+      z-index: 10;
+    }
+    .title {
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      text-shadow: 0 4px 16px rgba(0,0,0,0.6);
+      background: linear-gradient(135deg, #fff3b0 0%, #ffd166 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .subtitle {
+      font-size: 13px;
+      color: #a0a0c0;
+      font-weight: 500;
+    }
+
+    /* Speech Bubble */
+    #speech-bubble {
+      position: absolute;
+      top: 90px;
+      background: #ffffff;
+      color: #1a1a24;
+      font-weight: 800;
+      font-size: 17px;
+      padding: 10px 22px;
+      border-radius: 24px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.4), 0 0 0 3px #1a1a24;
+      pointer-events: none;
+      opacity: 0;
+      transform: scale(0.6) translateY(20px);
+      transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      z-index: 20;
+    }
+    #speech-bubble.active {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+    #speech-bubble::after {
+      content: '';
+      position: absolute;
+      bottom: -10px;
+      left: 50%;
+      transform: translateX(-50%);
+      border-width: 10px 10px 0;
+      border-style: solid;
+      border-color: #ffffff transparent;
+      display: block;
+      width: 0;
+    }
+
+    /* Floating Control Deck */
+    .controls-deck {
+      position: absolute;
+      bottom: 24px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 12px 20px;
+      background: rgba(22, 22, 38, 0.75);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 40px;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+      z-index: 10;
+      max-width: 90vw;
+    }
+    button {
+      background: rgba(255, 255, 255, 0.08);
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      padding: 8px 18px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+    button:hover {
+      background: rgba(255, 255, 255, 0.2);
+      transform: translateY(-2px);
+      border-color: rgba(255, 255, 255, 0.35);
+    }
+    button:active { transform: translateY(0); }
+    button.active {
+      background: #ffd166;
+      color: #111;
+      border-color: #ffd166;
+      box-shadow: 0 0 16px rgba(255, 209, 102, 0.4);
+    }
+    button.spidey-btn.active {
+      background: #e63946;
+      color: #fff;
+      border-color: #e63946;
+      box-shadow: 0 0 16px rgba(230, 57, 70, 0.5);
+    }
+    .slider-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: #aaa;
+      padding: 0 8px;
+    }
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 90px;
+      height: 5px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 3px;
+      outline: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #ffd166;
+      cursor: pointer;
+    }
+    .shout-btn {
+      background: linear-gradient(135deg, #ff4d6d, #f72585);
+      color: #fff;
+      border: none;
+      font-weight: 700;
+      padding: 9px 20px;
+      box-shadow: 0 4px 15px rgba(247, 37, 133, 0.4);
+    }
+    .shout-btn:hover {
+      background: linear-gradient(135deg, #ff758f, #b5179e);
+      box-shadow: 0 6px 20px rgba(247, 37, 133, 0.6);
+    }
+    .hint {
+      position: absolute;
+      bottom: 84px;
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.38);
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header-bar">
+    <div class="title" id="main-title">🐰 3D Spinning Usagi</div>
+    <div class="subtitle">(Oo-sah-gee) ★ Chiikawa 3D Viewer</div>
+  </div>
+
+  <div id="speech-bubble">YAHAHA!! (o・∇・o)</div>
+
+  <div id="canvas-container">
+    <canvas id="canvas3d"></canvas>
+  </div>
+
+  <div class="hint">🖱️ Drag to rotate in 3D • Scroll to zoom • Space to pause</div>
+
+  <div class="controls-deck">
+    <button id="btn-theme-usagi" class="active" onclick="setTheme(0)">🐰 Classic Usagi</button>
+    <button id="btn-theme-spidey" class="spidey-btn" onclick="setTheme(1)">🕸️ Spider-Usagi</button>
+    <button id="btn-theme-party" onclick="setTheme(2)">🌈 Disco Party</button>
+    <button id="btn-pause" onclick="toggleSpin()">⏸️ Pause</button>
+    
+    <div class="slider-group">
+      <span>Speed</span>
+      <input type="range" id="speed-slider" min="0" max="60" value="20" oninput="updateSpeed(this.value)">
+    </div>
+
+    <button class="shout-btn" onclick="triggerShout()">📢 YAHAHA!!</button>
+    <button onclick="resetView()">🔄 Reset</button>
+  </div>
+
+<script>
+  // =========================================================================
+  // 3D Engine in Pure Vanilla Canvas / WebGL (Zero external dependencies)
+  // =========================================================================
+
+  const canvas = document.getElementById('canvas3d');
+  const ctx = canvas.getContext('2d');
+  const speechBubble = document.getElementById('speech-bubble');
+  const mainTitle = document.getElementById('main-title');
+
+  let width = window.innerWidth;
+  let height = window.innerHeight;
+
+  function resize() {
+    width = window.innerWidth;
+    height = window.innerHeight;
+    canvas.width = width * window.devicePixelRatio;
+    canvas.height = height * window.devicePixelRatio;
+    canvas.style.width = width + 'px';
+    canvas.style.height = height + 'px';
+    ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  // State
+  let theme = 0; // 0: Usagi, 1: Spider-Man, 2: Party
+  let autoSpin = true;
+  let spinSpeed = 0.024;
+  let yaw = 0.0;
+  let pitch = 0.08;
+  let zoom = 1.0;
+  let totalTime = 0.0;
+  let isDragging = false;
+  let prevMouseX = 0;
+  let prevMouseY = 0;
+  let shoutTimeout = null;
+
+  // Sound Synthesizer via Web Audio API (Zero external assets)
+  let audioCtx = null;
+  function playYahahaSound() {
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const now = audioCtx.currentTime;
+
+      // Play cute upbeat 8-bit chirps: "Ya - ha - ha!!"
+      const notes = [587.33, 783.99, 987.77, 1174.66]; // D5, G5, B5, D6
+      notes.forEach((freq, idx) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, now + idx * 0.09);
+
+        gain.gain.setValueAtTime(0.22, now + idx * 0.09);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.09 + 0.12);
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        osc.start(now + idx * 0.09);
+        osc.stop(now + idx * 0.09 + 0.12);
+      });
+    } catch(e) {}
+  }
+
+  // Generate 3D Geometry for Usagi
+  class Vertex {
+    constructor(x, y, z, nx, ny, nz, colorType, r=254, g=238, b=175) {
+      this.x = x; this.y = y; this.z = z;
+      this.nx = nx; this.ny = ny; this.nz = nz;
+      this.colorType = colorType; // 0:fur, 1:eye, 2:highlight, 3:blush, 4:whisker, 5:mouth, 6:tongue, 7:earInner, 8:tail
+      this.r = r; this.g = g; this.b = b;
+    }
+  }
+
+  const modelVertices = [];
+  const modelPolygons = []; // Quads / triangles for 3D polygon rendering
+
+  function buildUsagi3D() {
+    modelVertices.length = 0;
+    modelPolygons.length = 0;
+
+    // 1. Chubby Head & Body (Egg / Pear)
+    const latSegs = 28;
+    const lonSegs = 36;
+    const bodyGrid = [];
+
+    for (let i = 0; i <= latSegs; i++) {
+      const theta = Math.PI * i / latSegs;
+      const sinT = Math.sin(theta);
+      const cosT = Math.cos(theta);
+      const y = 0.58 * cosT;
+      const yNorm = Math.max(0, Math.min(1, (y + 0.35) / 0.85));
+      const wFactor = 1.0 + 0.18 * (1.0 - yNorm);
+      const rx = 0.64 * wFactor;
+      const rz = 0.52 * wFactor;
+
+      const row = [];
+      for (let j = 0; j <= lonSegs; j++) {
+        const phi = 2.0 * Math.PI * j / lonSegs;
+        const cosP = Math.cos(phi);
+        const sinP = Math.sin(phi);
+
+        const x = rx * sinT * cosP;
+        const z = rz * sinT * sinP;
+
+        let colType = 0;
+        let r = 254, g = 238, b = 175;
+
+        // Front Face Features (z > 0.12)
+        if (z > 0.12) {
+          // Eyes (+/- 0.22, 0.04)
+          for (const sign of [-1, 1]) {
+            const ex = sign * 0.22, ey = 0.04;
+            const dx = (x - ex) / 0.075;
+            const dy = (y - ey) / 0.092;
+            if (dx*dx + dy*dy < 1.0) {
+              colType = 1; r = 26; g = 20; b = 22; // black eye
+              const h1_x = (x - (ex - sign * 0.018)) / 0.026;
+              const h1_y = (y - (ey + 0.028)) / 0.028;
+              if (h1_x*h1_x + h1_y*h1_y < 1.0) { colType = 2; r = 255; g = 255; b = 255; }
+              const h2_x = (x - (ex + sign * 0.020)) / 0.016;
+              const h2_y = (y - (ey - 0.028)) / 0.016;
+              if (h2_x*h2_x + h2_y*h2_y < 1.0) { colType = 2; r = 255; g = 255; b = 255; }
+            }
+          }
+
+          // Cheeks (+/- 0.40, -0.10)
+          for (const sign of [-1, 1]) {
+            const cx = sign * 0.40, cy = -0.10;
+            const dx = (x - cx) / 0.13;
+            const dy = (y - cy) / 0.075;
+            if (dx*dx + dy*dy < 1.0) {
+              colType = 3; r = 252; g = 160; b = 182; // blush
+              const u = (x - cx) * 0.82 - (y - cy) * 0.57;
+              if (Math.min(Math.abs(u - (-0.038)), Math.abs(u), Math.abs(u + 0.038)) < 0.010) {
+                colType = 4; r = 26; g = 20; b = 22; // whiskers
+              }
+            }
+          }
+
+          // Mouth (0, -0.08)
+          const mx = x, my = y - (-0.08);
+          const topLip = -0.028 + 0.55 * mx * mx;
+          const botLip = -0.095 - 0.50 * mx * mx;
+          if (mx > -0.075 && mx < 0.075 && my > botLip && my < topLip) {
+            if (my < (topLip + botLip)*0.5 + 0.01) { colType = 6; r = 238; g = 108; b = 134; } // tongue
+            else { colType = 5; r = 26; g = 20; b = 22; }
+          }
+        }
+
+        const v = new Vertex(x, y, z, sinT*cosP, cosT, sinT*sinP, colType, r, g, b);
+        modelVertices.push(v);
+        row.push(modelVertices.length - 1);
+      }
+      bodyGrid.push(row);
+    }
+
+    // Connect body grid into quads
+    for (let i = 0; i < latSegs; i++) {
+      for (let j = 0; j < lonSegs; j++) {
+        modelPolygons.push([
+          bodyGrid[i][j],
+          bodyGrid[i+1][j],
+          bodyGrid[i+1][j+1],
+          bodyGrid[i][j+1]
+        ]);
+      }
+    }
+
+    // 2. Ears
+    for (const sign of [-1, 1]) {
+      const earX = sign * 0.165;
+      const earGrid = [];
+      const eLat = 16, eLon = 16;
+      for (let ey = 0; ey <= eLat; ey++) {
+        const t = ey / eLat;
+        const py = 0.38 + (1.20 - 0.38) * t;
+        const pr = 0.095 * (1.0 - 0.18 * t);
+        const row = [];
+        for (let ex = 0; ex <= eLon; ex++) {
+          const phi = 2.0 * Math.PI * ex / eLon;
+          const px = earX + pr * Math.cos(phi);
+          const pz = pr * Math.sin(phi);
+
+          let cType = 0;
+          let r = 254, g = 238, b = 175;
+          if (pz > -0.01 && Math.abs(Math.cos(phi)) < 0.65 && py < 1.10) {
+            cType = 7; r = 252; g = 182; b = 198; // inner pink
+          }
+          const v = new Vertex(px, py, pz, Math.cos(phi), 0.15, Math.sin(phi), cType, r, g, b);
+          modelVertices.push(v);
+          row.push(modelVertices.length - 1);
+        }
+        earGrid.push(row);
+      }
+      for (let ey = 0; ey < eLat; ey++) {
+        for (let ex = 0; ex < eLon; ex++) {
+          modelPolygons.push([
+            earGrid[ey][ex],
+            earGrid[ey+1][ex],
+            earGrid[ey+1][ex+1],
+            earGrid[ey][ex+1]
+          ]);
+        }
+      }
+    }
+
+    // 3. Arms
+    for (const sign of [-1, 1]) {
+      const aGrid = [];
+      const aSteps = 6, cSteps = 10;
+      for (let ai = 0; ai <= aSteps; ai++) {
+        const t = ai / aSteps;
+        const ax = sign * (0.48 + 0.18 * t);
+        const ay = -0.18 - 0.14 * t;
+        const az = 0.05 + 0.05 * t;
+        const row = [];
+        for (let aj = 0; aj <= cSteps; aj++) {
+          const phi = 2.0 * Math.PI * aj / cSteps;
+          const px = ax + 0.055 * Math.cos(phi);
+          const py = ay + 0.055 * Math.sin(phi);
+          const v = new Vertex(px, py, az, sign*0.8, -0.4, 0.4, 0, 254, 238, 175);
+          modelVertices.push(v);
+          row.push(modelVertices.length - 1);
+        }
+        aGrid.push(row);
+      }
+      for (let ai = 0; ai < aSteps; ai++) {
+        for (let aj = 0; aj < cSteps; aj++) {
+          modelPolygons.push([
+            aGrid[ai][aj], aGrid[ai+1][aj], aGrid[ai+1][aj+1], aGrid[ai][aj+1]
+          ]);
+        }
+      }
+    }
+
+    // 4. Feet
+    for (const sign of [-1, 1]) {
+      const fx = sign * 0.20;
+      const fGrid = [];
+      const fSteps = 6, fcSteps = 10;
+      for (let fi = 0; fi <= fSteps; fi++) {
+        const t = fi / fSteps;
+        const fy = -0.48 - 0.18 * t;
+        const row = [];
+        for (let fj = 0; fj <= fcSteps; fj++) {
+          const phi = 2.0 * Math.PI * fj / fcSteps;
+          const px = fx + 0.058 * Math.cos(phi);
+          const pz = 0.058 * Math.sin(phi);
+          const v = new Vertex(px, fy, pz, Math.cos(phi), -0.7, Math.sin(phi), 0, 254, 238, 175);
+          modelVertices.push(v);
+          row.push(modelVertices.length - 1);
+        }
+        fGrid.push(row);
+      }
+      for (let fi = 0; fi < fSteps; fi++) {
+        for (let fj = 0; fj < fcSteps; fj++) {
+          modelPolygons.push([
+            fGrid[fi][fj], fGrid[fi+1][fj], fGrid[fi+1][fj+1], fGrid[fi][fj+1]
+          ]);
+        }
+      }
+    }
+
+    // 5. Fluffy Tail
+    const tLat = 8, tLon = 12;
+    const tailGrid = [];
+    for (let ti = 0; ti <= tLat; ti++) {
+      const theta = Math.PI * ti / tLat;
+      const row = [];
+      for (let tj = 0; tj <= tLon; tj++) {
+        const phi = 2.0 * Math.PI * tj / tLon;
+        const tx = 0.14 * Math.sin(theta) * Math.cos(phi);
+        const ty = -0.32 + 0.14 * Math.cos(theta);
+        const tz = -0.48 + 0.14 * Math.sin(theta) * Math.sin(phi);
+        const v = new Vertex(tx, ty, tz, Math.sin(theta)*Math.cos(phi), Math.cos(theta), -0.8, 8, 255, 254, 246);
+        modelVertices.push(v);
+        row.push(modelVertices.length - 1);
+      }
+      tailGrid.push(row);
+    }
+    for (let ti = 0; ti < tLat; ti++) {
+      for (let tj = 0; tj < tLon; tj++) {
+        modelPolygons.push([
+          tailGrid[ti][tj], tailGrid[ti+1][tj], tailGrid[ti+1][tj+1], tailGrid[ti][tj+1]
+        ]);
+      }
+    }
+  }
+
+  buildUsagi3D();
+
+  // Mouse & Touch Controls
+  window.addEventListener('mousedown', (e) => {
+    isDragging = true;
+    prevMouseX = e.clientX;
+    prevMouseY = e.clientY;
+  });
+  window.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    const dx = e.clientX - prevMouseX;
+    const dy = e.clientY - prevMouseY;
+    yaw += dx * 0.008;
+    pitch = Math.max(-1.1, Math.min(1.1, pitch + dy * 0.008));
+    prevMouseX = e.clientX;
+    prevMouseY = e.clientY;
+  });
+  window.addEventListener('mouseup', () => isDragging = false);
+
+  window.addEventListener('wheel', (e) => {
+    zoom = Math.max(0.45, Math.min(2.5, zoom * (e.deltaY > 0 ? 0.92 : 1.08)));
+  });
+
+  // Touch Support
+  window.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 1) {
+      isDragging = true;
+      prevMouseX = e.touches[0].clientX;
+      prevMouseY = e.touches[0].clientY;
+    }
+  });
+  window.addEventListener('touchmove', (e) => {
+    if (!isDragging || e.touches.length !== 1) return;
+    const dx = e.touches[0].clientX - prevMouseX;
+    const dy = e.touches[0].clientY - prevMouseY;
+    yaw += dx * 0.008;
+    pitch = Math.max(-1.1, Math.min(1.1, pitch + dy * 0.008));
+    prevMouseX = e.touches[0].clientX;
+    prevMouseY = e.touches[0].clientY;
+  });
+  window.addEventListener('touchend', () => isDragging = false);
+
+  // Keyboard
+  window.addEventListener('keydown', (e) => {
+    if (e.code === 'Space') { toggleSpin(); e.preventDefault(); }
+    else if (e.key === 's' || e.key === 'S') { setTheme(theme === 1 ? 0 : 1); }
+    else if (e.key === 'c' || e.key === 'C') { setTheme((theme + 1) % 3); }
+    else if (e.key === 'y' || e.key === 'Y') { triggerShout(); }
+    else if (e.key === 'r' || e.key === 'R') { resetView(); }
+  });
+
+  function setTheme(t) {
+    theme = t;
+    document.querySelectorAll('.controls-deck button').forEach(b => b.classList.remove('active'));
+    if (t === 0) document.getElementById('btn-theme-usagi').classList.add('active');
+    if (t === 1) document.getElementById('btn-theme-spidey').classList.add('active');
+    if (t === 2) document.getElementById('btn-theme-party').classList.add('active');
+
+    if (t === 0) mainTitle.innerHTML = "🐰 3D Spinning Usagi";
+    else if (t === 1) mainTitle.innerHTML = "🕸️ 3D Spinning Spider-Usagi";
+    else mainTitle.innerHTML = "🌈 3D Disco Party Usagi";
+  }
+
+  function toggleSpin() {
+    autoSpin = !autoSpin;
+    const btn = document.getElementById('btn-pause');
+    btn.innerHTML = autoSpin ? "⏸️ Pause" : "▶️ Play";
+  }
+
+  function updateSpeed(val) {
+    spinSpeed = val * 0.0012;
+  }
+
+  function resetView() {
+    yaw = 0.0;
+    pitch = 0.08;
+    zoom = 1.0;
+  }
+
+  const shoutsUsagi = [
+    "YAHAHA!! (o・∇・o)",
+    "URA URA URA URA!! ⚡",
+    "PULLYA HA HA HA!! 🥕",
+    "FUUUTTO!! USAGI SPIN!!",
+    "YAH! HAAA! EEE! (o≧▽≦)o"
+  ];
+  const shoutsSpidey = [
+    "WITH GREAT POWER COMES GREAT YAHAHA!! 🕸️",
+    "FRIENDLY NEIGHBORHOOD SPIDER-USAGI!! 🕷️",
+    "MY SPIDEY-SENSE IS TINGLING!! URA!!",
+    "WEB-SHOOTER PULLYA BLAST!! 🕸️🕸️",
+    "INTO THE SPIDER-USAGI VERSE!!"
+  ];
+
+  function triggerShout() {
+    playYahahaSound();
+    const list = theme === 1 ? shoutsSpidey : shoutsUsagi;
+    speechBubble.innerText = list[Math.floor(Math.random() * list.length)];
+    speechBubble.classList.add('active');
+    clearTimeout(shoutTimeout);
+    shoutTimeout = setTimeout(() => {
+      speechBubble.classList.remove('active');
+    }, 2400);
+  }
+
+  // Shading Helper for Vertices
+  function getPointColor(v, nx, ny, nz) {
+    let r = v.r, g = v.g, b = v.b;
+
+    if (theme === 1) { // Spider-Usagi
+      r = 215; g = 26; b = 36; // Red suit
+      if (Math.abs(v.x) > 0.38 && v.y < 0.15 && v.z < 0.10) { r = 22; g = 68; b = 145; } // blue
+      else if (v.y < -0.30 && v.z < -0.05) { r = 22; g = 68; b = 145; }
+
+      // Webbing lines
+      if (r > 150) {
+        const rWeb = Math.sqrt(v.x*v.x*1.2 + (v.y+0.02)**2);
+        const ang = Math.atan2(v.y+0.02, v.x);
+        if (Math.sin(rWeb * 32.0) > 0.88 || Math.abs(Math.sin(ang * 10.0)) > 0.96) {
+          r = 20; g = 20; b = 24;
+        }
+      }
+      // Eyes
+      if (v.z > 0.15) {
+        for (const sign of [-1, 1]) {
+          const ex = (v.x - sign * 0.22) * sign;
+          const ey = v.y - 0.04;
+          if (ex > -0.09 && ex < 0.14 && ey > -0.09 && ey < 0.11) {
+            const dU = ey - (0.02 + 0.52 * ex);
+            const dL = ey - (-0.06 + 0.38 * ex * ex);
+            if (dU < 0.025 && dL > -0.025) {
+              const isRim = dU > 0.005 || dL < -0.005 || ex < -0.07 || ex > 0.12;
+              if (isRim) { r = 20; g = 20; b = 24; }
+              else { r = 255; g = 255; b = 255; }
+            }
+          }
+        }
+      }
+    } else if (theme === 2) { // Disco
+      const t = totalTime * 3.0 + v.y * 3.0 + v.x * 2.0;
+      r = Math.floor(127 + 127 * Math.sin(t));
+      g = Math.floor(127 + 127 * Math.sin(t + 2.094));
+      b = Math.floor(127 + 127 * Math.sin(t + 4.188));
+      if (v.colorType === 1) { r = 20; g = 20; b = 24; }
+    }
+
+    // Directional light (0.4, 0.75, 0.55)
+    const diff = Math.max(0.0, nx * 0.39 + ny * 0.74 + nz * 0.54);
+    const shade = 0.72 + 0.32 * diff;
+    return `rgb(${Math.min(255, Math.floor(r*shade))}, ${Math.min(255, Math.floor(g*shade))}, ${Math.min(255, Math.floor(b*shade))})`;
+  }
+
+  // Main Render Loop
+  let lastFrameTime = performance.now();
+
+  function animate(now) {
+    const dt = (now - lastFrameTime) * 0.001;
+    lastFrameTime = now;
+    totalTime += dt;
+
+    if (autoSpin) {
+      yaw += spinSpeed;
+    }
+
+    ctx.clearRect(0, 0, width, height);
+
+    // Cute gentle bounce/dance
+    const bounceY = autoSpin ? Math.sin(totalTime * 4.0) * 0.04 : 0;
+    const centerY = 0.26 + bounceY;
+
+    // Viewport scaling
+    const minDim = Math.min(width, height);
+    const scale = minDim * 0.38 * zoom;
+    const cx = width * 0.5;
+    const cy = height * 0.52;
+
+    const cyaw = Math.cos(yaw), syaw = Math.sin(yaw);
+    const cpitch = Math.cos(pitch), spitch = Math.sin(pitch);
+
+    // Transform vertices to screen space
+    const transformed = new Array(modelVertices.length);
+    for (let i = 0; i < modelVertices.length; i++) {
+      const v = modelVertices[i];
+      const vy = v.y - centerY;
+
+      // Rotation Y (Yaw)
+      const x1 = cyaw * v.x + syaw * v.z;
+      const z1 = -syaw * v.x + cyaw * v.z;
+
+      // Rotation X (Pitch)
+      const y1 = cpitch * vy - spitch * z1;
+      const z2 = spitch * vy + cpitch * z1;
+
+      // Rotate normals
+      const nx1 = cyaw * v.nx + syaw * v.nz;
+      const nz1 = -syaw * v.nx + cyaw * v.nz;
+      const ny1 = cpitch * v.ny - spitch * nz1;
+      const nz2 = spitch * v.ny + cpitch * nz1;
+
+      // Perspective projection
+      const camDist = 2.40;
+      const d = z2 + camDist;
+      const invD = 1.0 / Math.max(0.2, d);
+
+      transformed[i] = {
+        sx: cx + x1 * invD * scale,
+        sy: cy - y1 * invD * scale,
+        z: z2,
+        nx: nx1, ny: ny1, nz: nz2,
+        color: getPointColor(v, nx1, ny1, nz2)
+      };
+    }
+
+    // Sort polygons by average depth (Painter's algorithm)
+    const sortedPolys = [];
+    for (let i = 0; i < modelPolygons.length; i++) {
+      const p = modelPolygons[i];
+      const v0 = transformed[p[0]];
+      const v1 = transformed[p[1]];
+      const v2 = transformed[p[2]];
+      const v3 = transformed[p[3]];
+
+      // Backface culling: cross product of edges in 2D
+      const cross = (v1.sx - v0.sx) * (v2.sy - v0.sy) - (v1.sy - v0.sy) * (v2.sx - v0.sx);
+      if (cross > 0) continue; // culled
+
+      const avgZ = (v0.z + v1.z + v2.z + v3.z) * 0.25;
+      sortedPolys.push({ poly: p, z: avgZ });
+    }
+
+    sortedPolys.sort((a, b) => b.z - a.z);
+
+    // Draw polygons
+    ctx.lineWidth = 1.0;
+    ctx.lineJoin = 'round';
+
+    for (let i = 0; i < sortedPolys.length; i++) {
+      const p = sortedPolys[i].poly;
+      const v0 = transformed[p[0]];
+      const v1 = transformed[p[1]];
+      const v2 = transformed[p[2]];
+      const v3 = transformed[p[3]];
+
+      ctx.beginPath();
+      ctx.moveTo(v0.sx, v0.sy);
+      ctx.lineTo(v1.sx, v1.sy);
+      ctx.lineTo(v2.sx, v2.sy);
+      ctx.lineTo(v3.sx, v3.sy);
+      ctx.closePath();
+
+      ctx.fillStyle = v0.color;
+      ctx.fill();
+
+      // Soft toon edge
+      ctx.strokeStyle = v0.color;
+      ctx.stroke();
+    }
+
+    requestAnimationFrame(animate);
+  }
+
+  requestAnimationFrame(animate);
+</script>
+</body>
+</html>

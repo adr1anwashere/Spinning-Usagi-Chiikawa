@@ -1,0 +1,10 @@
+# Python
+__pycache__/
+*.pyc
+
+# OS
+.DS_Store
+
+# C++ Build Artefacts
+Usagi
+*.o
